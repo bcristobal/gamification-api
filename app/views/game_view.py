@@ -9,7 +9,7 @@ from ..controllers import game_controller as controller
 router = APIRouter(prefix="/games", tags=["games"])
 
 @router.post("/")
-def create_gam(*,
+def create_game(*,
                 new_game: model.GameCreate,
                 my_user: Annotated[dict, Depends(decode_token)],
                 session: Session = Depends(get_session)):

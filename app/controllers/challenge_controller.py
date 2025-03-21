@@ -96,7 +96,8 @@ def update_challenge(game_name: str, challenge_id:uuid.UUID, updated_challenge: 
 
         if updated_challenge.type:
             challenge.type = updated_challenge.type
-        
+        session.commit()
+        session.refresh(challenge)
         return challenge
 
 
