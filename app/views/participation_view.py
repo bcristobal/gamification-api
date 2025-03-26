@@ -38,3 +38,14 @@ def add_points(*,
                my_user: Annotated[dict, Depends(decode_token)],
                session: Session = Depends(get_session)):
     return controller.add_points(game_name, challenge_id, participation_id, participation_add_points, my_user, session)
+
+@router.get("/games/{game_name}/my-challenges")
+def get_user_challenges(*,
+                       game_name: str,
+                       my_user: Annotated[dict, Depends(decode_token)],
+                       session: Session = Depends(get_session)
+                       ):
+    """
+    Obtiene todos los desafíos en los que el usuario está participando para un juego específico
+    """
+    return controller.get_user_challenges_by_game(game_name=game_name, user=my_user, session=session)

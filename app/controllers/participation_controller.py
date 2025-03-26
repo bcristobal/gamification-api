@@ -76,4 +76,38 @@ def add_points(game_name: str, challenge_id: uuid.UUID, participation_id: uuid.U
     session.refresh(participation)
     return participation
     
+
+def get_user_challenges_by_game(game_name: str, user: User, session: Session) -> list:
+    game = get_game_by_name(game_name, session)
     
+    # Consulta para obtener todas las participaciones del usuario en el juego
+    participations_stm = select(model.Participation).where(
+        model.Participation.user_id == user.id,
+        model.Participation.game_id == game.id
+    )
+    participations = session.exec(statement=participations_stm).all()
+    
+    # Obtener los IDs de los desafíos
+    challenge_ids = [p.challenge_id for p in participations]
+    
+    # Consulta para obtener los detalles de los desafíos
+    from ..models.challenge_model import Challenge
+    challenges_stm = select(Challenge).where(Challenge.id.in_(challenge_ids))
+    challenges = session.exec(statement=challenges_stm).all()
+    
+    # Crear resultado combinando información de desafíos y participaciones
+    result = []
+    for challenge in challenges:
+        # Encontrar la participación correspondiente
+        participation = next(p for p in participations if p.challenge_id == challenge.id)
+        
+        # Crear un objeto con la información combinada
+        challenge_data = {
+            "challenge": challenge,
+            "participation": participation,
+            "progress_percentage": (participation.total_points / participation.needed_points * 100) 
+                if participation.needed_points > 0 else 0
+        }
+        result.append(challenge_data)
+    
+    return result

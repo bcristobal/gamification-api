@@ -10,13 +10,6 @@ from .views.participation_view import router as paticipation_router
 
 app = FastAPI()
 
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["http://127.0.0.1:4321", "http://localhost:4321"],  # Add both origins
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
 
 @app.on_event("startup")
 def on_start_up():

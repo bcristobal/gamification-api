@@ -9,8 +9,13 @@ from .models.user_model import User
 from .db import get_session
 from sqlmodel import Session
 
-SECRET_KEY = "SDLKFJSFLKSDJFL"
-ALGORITHM = "HS256"
+import os
+from dotenv import load_dotenv
+
+load_dotenv()
+
+SECRET_KEY = os.getenv("SECRET_KEY")
+ALGORITHM = os.getenv("ALGORITHM")
 
 auth_router = APIRouter(tags=["auth"])
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
