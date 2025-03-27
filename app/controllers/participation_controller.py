@@ -101,13 +101,14 @@ def get_user_challenges_by_game(game_name: str, user: User, session: Session) ->
         # Encontrar la participación correspondiente
         participation = next(p for p in participations if p.challenge_id == challenge.id)
         
-        # Crear un objeto con la información combinada
-        challenge_data = {
-            "challenge": challenge,
-            "participation": participation,
-            "progress_percentage": (participation.total_points / participation.needed_points * 100) 
-                if participation.needed_points > 0 else 0
-        }
-        result.append(challenge_data)
+        # Convert challenge to dictionary
+        challenge_dict = challenge.dict()
+        
+        # Add participation-related data to the dictionary
+        challenge_dict['total_points'] = participation.total_points
+        challenge_dict['needed_points'] = participation.needed_points
+        challenge_dict['progress_percentage'] = (participation.total_points / participation.needed_points * 100) if participation.needed_points > 0 else 0
+        
+        result.append(challenge_dict)
     
     return result

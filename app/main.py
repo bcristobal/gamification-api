@@ -7,8 +7,18 @@ from .views.user_view import router as user_router
 from .views.game_view import router as game_router
 from .views.challenge_view import router as challenge_router
 from .views.participation_view import router as paticipation_router
+from fastapi.middleware.cors import CORSMiddleware
+
 
 app = FastAPI()
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://127.0.0.1:8000", "http://localhost:8000"],  # Add both origins
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 
 @app.on_event("startup")
