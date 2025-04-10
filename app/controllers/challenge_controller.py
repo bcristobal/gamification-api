@@ -92,7 +92,7 @@ def update_challenge(game_name: str, challenge_id:uuid.UUID, updated_challenge: 
 
         if updated_challenge.points:
             validate_points(updated_challenge.points)
-            challenge.point = updated_challenge.points
+            challenge.points = updated_challenge.points
 
         if updated_challenge.type:
             challenge.type = updated_challenge.type

@@ -7,12 +7,24 @@ import uuid
 from ..models.user_model import User
 from ..controllers.game_controller import get_game_by_name
 from ..controllers.challenge_controller import get_challenge_by_id
+from ..controllers.gamification_controller import award_xp_points, calculate_challenge_completion, process_collaborative_challenge_progress
 
-def create_participation (game_name: str, challenge_id: uuid.UUID,new_participation: model.ParticipationCreate , user: User, session: Session) -> model.Participation:
+def create_participation(game_name: str, challenge_id: uuid.UUID, new_participation: model.ParticipationCreate, user: User, session: Session) -> model.Participation:
     game = get_game_by_name(game_name, session)
     challenge = get_challenge_by_id(challenge_id, session)
     if game.id != challenge.game_id:
         raise HTTPException(status_code=400, detail="Game and challenge doesn't match.")
+    
+    # Check if user is already participating
+    existing = session.exec(
+        select(model.Participation).where(
+            model.Participation.user_id == user.id,
+            model.Participation.challenge_id == challenge_id
+        )
+    ).first()
+    
+    if existing:
+        raise HTTPException(status_code=400, detail="You are already participating in this challenge.")
     
     points = calculate_init_points(new_participation.dificulty, challenge.points)
     
@@ -24,9 +36,12 @@ def create_participation (game_name: str, challenge_id: uuid.UUID,new_participat
     session.add(participation)
     session.commit()
     session.refresh(participation)
+    
+    # Award XP for joining a challenge
+    award_xp_points(user, 50, session)  # Award 50 XP for joining a challenge
+    
     return participation
     
-
 
 def calculate_init_points(dificulty: model.Dificulty, points: int) -> int:
     if dificulty == model.Dificulty.EASY:
@@ -43,7 +58,11 @@ def get_participations(game_name: str, challenge_id: uuid.UUID, user: User, sess
     if game.id != challenge.game_id:
         raise HTTPException(status_code=400, detail="Game and challenge doesn't match.")
     
-    stm = select(model.Participation).where(model.Participation.user_id == user.id, model.Participation.game_id == game.id)
+    stm = select(model.Participation).where(
+        model.Participation.user_id == user.id, 
+        model.Participation.challenge_id == challenge_id,
+        model.Participation.game_id == game.id
+    )
     participations = session.exec(statement=stm).all()
 
     return participations
@@ -57,11 +76,10 @@ def get_participation_by_id(id: uuid.UUID, session: Session) -> model.Participat
         raise HTTPException(status_code=404, detail="Participation not found.")
     return participation
 
-def add_points(game_name: str, challenge_id: uuid.UUID, participation_id: uuid.UUID,participation_add_points: model.ParticipationAddPoints, user: User, session: Session) -> model.Participation:
+def add_points(game_name: str, challenge_id: uuid.UUID, participation_id: uuid.UUID, participation_add_points: model.ParticipationAddPoints, user: User, session: Session) -> model.Participation:
     game = get_game_by_name(game_name, session)
     challenge = get_challenge_by_id(challenge_id, session)
     participation = get_participation_by_id(participation_id, session)
-
 
     if game.id != challenge.game_id:
         raise HTTPException(status_code=400, detail="Game and challenge doesn't match.")
@@ -69,11 +87,37 @@ def add_points(game_name: str, challenge_id: uuid.UUID, participation_id: uuid.U
         raise HTTPException(status_code=400, detail="Game and participation doesn't match.")
     if participation.challenge_id != challenge.id:
         raise HTTPException(status_code=400, detail="Challenge and participation doesn't match.")
+    if participation.user_id != user.id:
+        raise HTTPException(status_code=401, detail="This participation does not belong to you.")
     
+    # Store previous points to check for completion
+    prev_points = participation.total_points
+    
+    # Add points to participation
     participation.total_points = participation.total_points + participation_add_points.points
 
     session.commit()
     session.refresh(participation)
+    
+    # Award XP for adding points
+    award_xp_points(user, participation_add_points.points // 10, session)  # 1 XP for every 10 points added
+    
+    # Check if user just completed the challenge
+    if prev_points < participation.needed_points and participation.total_points >= participation.needed_points:
+        # Challenge just completed - calculate XP bonus
+        difficulty_multiplier = 1
+        if participation.dificulty == model.Dificulty.MEDIUM:
+            difficulty_multiplier = 2
+        elif participation.dificulty == model.Dificulty.HARD:
+            difficulty_multiplier = 3
+            
+        completion_bonus = challenge.points * difficulty_multiplier
+        award_xp_points(user, completion_bonus, session)
+    
+    # If it's a collaborative challenge, add to global progress
+    if challenge.type == "collaborative":
+        process_collaborative_challenge_progress(challenge_id, participation_add_points.points, session)
+    
     return participation
     
 
@@ -108,6 +152,9 @@ def get_user_challenges_by_game(game_name: str, user: User, session: Session) ->
         challenge_dict['total_points'] = participation.total_points
         challenge_dict['needed_points'] = participation.needed_points
         challenge_dict['progress_percentage'] = (participation.total_points / participation.needed_points * 100) if participation.needed_points > 0 else 0
+        challenge_dict['participation_id'] = participation.id
+        challenge_dict['difficulty'] = participation.dificulty
+        challenge_dict['is_completed'] = participation.total_points >= participation.needed_points
         
         result.append(challenge_dict)
     
