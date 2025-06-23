@@ -13,11 +13,14 @@ from .views.level_view import router as level_router
 from .views.reward_view import router as reward_router
 from .views.gamification_view import router as gamification_router
 
+from fastapi.middleware.cors import CORSMiddleware
+
+
 app = FastAPI()
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://127.0.0.1:8000", "http://localhost:8000"],  # Add both origins
+    allow_origins=["http://127.0.0.1:8000", "http://localhost:8000", "https://walking-pwa.netlify.app/*"],  # Add both origins
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
