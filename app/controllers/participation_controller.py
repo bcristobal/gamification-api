@@ -136,7 +136,11 @@ def get_user_challenges_by_game(game_name: str, user: User, session: Session) ->
     
     # Consulta para obtener los detalles de los desafíos
     from ..models.challenge_model import Challenge
-    challenges_stm = select(Challenge).where(Challenge.id.in_(challenge_ids))
+    challenges_stm = select(Challenge).where(
+        Challenge.id.in_(challenge_ids),
+        Challenge.start_date <= datetime.now(),
+        Challenge.finish_date >= datetime.now()
+    )
     challenges = session.exec(statement=challenges_stm).all()
     
     # Crear resultado combinando información de desafíos y participaciones
